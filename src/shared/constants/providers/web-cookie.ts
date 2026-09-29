@@ -3,6 +3,20 @@
  * Pure data literal; re-exported by the providers.ts barrel. No behavior change.
  */
 export const WEB_COOKIE_PROVIDERS = {
+  "chatgpt-web": {
+    id: "chatgpt-web",
+    serviceKinds: ["llm"],
+    name: "ChatGPT Web (Clean Room)",
+    icon: "auto_awesome",
+    color: "#10A37F",
+    textIcon: "CG",
+    website: "https://chatgpt.com",
+    authHint:
+      "Paste Playwright-compatible storage-state JSON exported from a logged-in chatgpt.com browser context. Cookie headers and individual token values are not accepted.",
+    subscriptionRisk: true,
+    riskNoticeVariant: "webCookie",
+    toolCalling: "none",
+  },
   "chatgpt-web-codex": {
     id: "chatgpt-web-codex",
     serviceKinds: ["llm"],
@@ -338,21 +352,6 @@ export const WEB_COOKIE_PROVIDERS = {
       "Paste the full Cookie header from www.dola.com. It should include sessionid, ttwid, and s_v_web_id. If s_v_web_id is unavailable, fp=verify_... from a chat/completion request URL can be used as a fallback.",
     subscriptionRisk: true,
     riskNoticeVariant: "webCookie",
-  },
-  "gemini-business": {
-    id: "gemini-business",
-    serviceKinds: ["llm"],
-    alias: "gembiz",
-    name: "Gemini Business (Enterprise)",
-    icon: "business_center",
-    color: "#4285F4",
-    textIcon: "GB",
-    website: "https://business.gemini.google",
-    hasFree: true,
-    freeNote:
-      "Free for Google Workspace enterprise accounts — enterprise Gemini models (Pro, Flash, image, video) via direct StreamGenerate HTTP API. No subscription required, just enterprise SSO.",
-    authHint:
-      "From your enterprise account: open business.gemini.google/home/cid/{your-cid}, then copy __Secure-1PSID and __Secure-1PSIDTS cookies from DevTools → Application → Cookies. Paste as a cookie header below.",
   },
   "zenmux-free": {
     id: "zenmux-free",

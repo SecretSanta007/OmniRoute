@@ -19,6 +19,7 @@ const providerChatRoute =
   await import("../../src/app/api/v1/providers/[provider]/chat/completions/route.ts");
 const imageEditRoute = await import("../../src/app/api/v1/images/edits/route.ts");
 const v1ModelsCatalog = await import("../../src/app/api/v1/models/catalog.ts");
+const { setPinnedFetchTestOverride } = await import("../../src/shared/network/remoteImageFetch.ts");
 
 const originalFetch = globalThis.fetch;
 
@@ -72,6 +73,7 @@ function createCodexEditForm(
 
 async function resetStorage() {
   globalThis.fetch = originalFetch;
+  setPinnedFetchTestOverride(undefined);
   apiKeysDb.resetApiKeyState();
   core.resetDbInstance();
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -120,6 +122,7 @@ test.beforeEach(async () => {
 
 test.after(() => {
   globalThis.fetch = originalFetch;
+  setPinnedFetchTestOverride(undefined);
   apiKeysDb.resetApiKeyState();
   core.resetDbInstance();
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -139,14 +142,14 @@ test("image routes expose CORS preflight handlers", async () => {
   }
 });
 
-test("v1 image routes fail closed for retired common ChatGPT Web ids without network", async () => {
+test("v1 image routes fail closed for the retired ChatGPT Web alias without network", async () => {
   let fetchCalls = 0;
   globalThis.fetch = async () => {
     fetchCalls += 1;
     throw new Error("Retired image providers must not reach the network");
   };
 
-  for (const provider of ["chatgpt-web", "cgpt-web"]) {
+  for (const provider of ["cgpt-web"]) {
     const generationResponse = await imageRoute.POST(
       new Request("http://localhost/api/v1/images/generations", {
         method: "POST",
@@ -224,7 +227,7 @@ test("v1 image models GET exposes current Codex image models and hides inactive 
   assert.equal(response.status, 200);
   assert.deepEqual(
     ids.filter((id) => id.startsWith("codex/")),
-    ["codex/gpt-5.6-sol", "codex/gpt-5.6-terra", "codex/gpt-5.6-luna"]
+    ["codex/gpt-5.6-sol-image", "codex/gpt-5.6-terra-image", "codex/gpt-5.6-luna-image"]
   );
   assert.ok(!ids.includes("codex/gpt-5.5"));
   assert.ok(!ids.includes("openai/gpt-image-2"));
@@ -234,7 +237,7 @@ test("v1 image models GET exposes current Codex image models and hides inactive 
 test("v1 image generation POST accepts promptless requests for image-only models", async () => {
   await seedConnection("topaz", { apiKey: "topaz-key" });
 
-  globalThis.fetch = async (url, options: RequestInit = {}) => {
+  const mockFetchImpl = async (url, options: RequestInit = {}) => {
     const stringUrl = String(url);
     if (stringUrl === "https://example.com/topaz-input.png") {
       return new Response(new Uint8Array([1, 2, 3]), {
@@ -254,6 +257,11 @@ test("v1 image generation POST accepts promptless requests for image-only models
 
     throw new Error(`Unexpected URL: ${stringUrl}`);
   };
+  // #13883: resolveImageSource now sets `pinDns: true`, which pins the connection via a
+  // real undici socket and would bypass this mocked globalThis.fetch — route it through
+  // the test-only pinned-fetch override instead (src/shared/network/remoteImageFetch.ts).
+  globalThis.fetch = mockFetchImpl;
+  setPinnedFetchTestOverride(mockFetchImpl);
 
   const response = await imageRoute.POST(
     new Request("http://localhost/api/v1/images/generations", {
@@ -339,7 +347,7 @@ test("v1 image edit retirement takes precedence over API key policy", async () =
     throw new Error("Retired image providers must not reach the network");
   };
 
-  for (const provider of ["chatgpt-web", "cgpt-web"]) {
+  for (const provider of ["cgpt-web"]) {
     const response = await imageEditRoute.POST(
       new Request("http://localhost/api/v1/images/edits", {
         method: "POST",

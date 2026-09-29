@@ -18,7 +18,7 @@ export const CANONICAL_EFFORT_VALUES = ["none", "low", "medium", "high", "xhigh"
 
 export type CanonicalEffort = (typeof CANONICAL_EFFORT_VALUES)[number];
 
-/** Use provider-native GPT-5.6 effort levels without widening the global request vocabulary. */
+/** Use provider-native effort levels without widening the global request vocabulary. */
 export function extendCodexGpt56EffortValues(
   provider: string | null | undefined,
   model: string | null | undefined,
@@ -32,20 +32,28 @@ export function extendCodexGpt56EffortValues(
     .replace(/^(?:codex|cx|kiro|kr)\//, "");
   if (!normalizedModel) return values;
 
+  const isKiroProvider = normalizedProvider === "kiro" || normalizedProvider === "kr";
+  if (
+    isKiroProvider &&
+    /^claude-opus-5(?:-(?:none|low|medium|high|xhigh|max))?$/.test(normalizedModel)
+  ) {
+    return values.includes("max") ? values : [...values, "max"];
+  }
+
   const match = normalizedModel.match(
-    /^gpt-5\.6-(sol|terra|luna)(?:-(?:none|low|medium|high|xhigh|max|ultra))?$/
+    /^gpt-(?:5\.6-(sol|terra|luna)|6-(astra|sol|luna))(?:-(?:none|low|medium|high|xhigh|max|ultra))?$/
   );
   if (!match) return values;
 
-  const isKiroProvider = normalizedProvider === "kiro" || normalizedProvider === "kr";
   if (isKiroProvider) {
+    if (!match[1]) return values;
     return values.includes("max") ? values : [...values, "max"];
   }
 
   if (normalizedProvider !== "codex" && normalizedProvider !== "cx") return values;
 
   const nativeValues = ["low", "medium", "high", "xhigh", "max"];
-  return match[1] === "luna" ? nativeValues : [...nativeValues, "ultra"];
+  return (match[1] || match[2]) === "luna" ? nativeValues : [...nativeValues, "ultra"];
 }
 
 /**
@@ -83,7 +91,7 @@ export function extendDeepSeekEffortValues(
  * DeepSeek provider (registry id `deepseek`, alias `ds`).
  *
  * Deliberately scoped to the native provider: routed namespaces such as
- * `openrouter/deepseek/...` or `tllm/deepseek_v4` terminate at a different
+ * `openrouter/deepseek/...` or `oc/deepseek-v4-flash-free` terminate at a different
  * upstream whose accepted effort vocabulary we do not control.
  */
 export function isDeepSeekNativeMaxModel(
